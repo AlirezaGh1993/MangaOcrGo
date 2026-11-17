@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>استخراج و جایگذاری متن مانگا — نسخه سرور</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- Desktop WebView chrome (visible when html.desktop-app) -->
+<div id="desktop-titlebar" class="desktop-titlebar">
+  <div class="desktop-title-drag">
+    <span class="desktop-app-title">Manga OCR</span>
+  </div>
+  <div class="desktop-title-actions">
+    <button type="button" class="desk-btn" id="desk-refresh" title="رفرش صفحه">↻</button>
+    <button type="button" class="desk-btn" id="desk-fullscreen" title="تمام‌صفحه">⛶</button>
+    <button type="button" class="desk-btn" id="desk-minimize" title="کوچک کردن">─</button>
+    <button type="button" class="desk-btn" id="desk-maximize" title="بزرگ/بازگردانی">□</button>
+    <button type="button" class="desk-btn desk-close" id="desk-close" title="بستن">✕</button>
+  </div>
+</div>
+
+
+<div id="app-container">
+
+  <aside id="left-sidebar">
+    <nav class="sidebar-tabs icon-tabs" aria-label="بخش‌های ابزار">
+      <button class="tab-btn active" data-tab="project"  data-tip="پروژه‌ها"      aria-label="پروژه‌ها">🗂️</button>
+      <button class="tab-btn"        data-tab="images"   data-tip="تصاویر"        aria-label="تصاویر">🖼️</button>
+      <button class="tab-btn"        data-tab="ai"       data-tip="پردازش هوشمند" aria-label="پردازش هوشمند">🤖</button>
+      <button class="tab-btn"        data-tab="text"     data-tip="متن و ترجمه"   aria-label="متن و ترجمه">✍️</button>
+      <button class="tab-btn"        data-tab="export"   data-tip="خروجی"         aria-label="خروجی">📦</button>
+      <button class="tab-btn"        data-tab="settings" data-tip="تنظیمات"       aria-label="تنظیمات">⚙️</button>
+    </nav>
+
+    <!-- 🔴 جدید: کادر نام پروژه + فلش جابجایی سریع بین پروژه‌ها -->
+    <div class="project-name-wrapper">
+      <input type="text" id="project-name-input" class="project-name-field" placeholder="نام پروژه…">
+      <button id="project-switcher-btn" class="project-switcher-btn" data-tip="جابجایی سریع بین پروژه‌ها" aria-label="جابجایی پروژه">▾</button>
+      <div id="project-switcher-list" class="project-switcher-list hidden"></div>
+    </div>
+
+    <div id="tools-wrapper">
+
+      <section class="tool-section" data-section-id="project">
+        <div class="icon-grid cols-3">
+          <button id="btn-create-new-project" class="ibtn" data-tip="پروژه جدید">➕</button>
+          <button id="save-project-btn" class="ibtn" data-tip="ذخیره JSON">💾</button>
+          <button id="load-json-btn" class="ibtn" data-tip="بارگذاری JSON">📂</button>
+          <input type="file" id="load-json-input" accept=".json" hidden>
+        </div>
+        <div class="side-label">پروژه‌های سرور</div>
+        <div id="server-projects-list" class="projects-list-wrapper"></div>
+      </section>
+
+      <section class="tool-section" data-section-id="images">
+        <div class="image-drop-zone" id="image-drop-zone">
+          <span class="drop-icon">📥</span>
+          <span class="drop-hint">تصویر، پوشه فصل یا ZIP را رها کنید</span>
+          <div class="upload-btn-row" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px">
+            <button type="button" id="btn-images-chapter" class="append-upload-btn">تصاویر</button>
+            <button type="button" id="btn-folder-chapter" class="append-upload-btn">پوشه فصل</button>
+            <button type="button" id="btn-zip-chapter" class="append-upload-btn">ZIP فصل</button>
+            <label for="image-upload" class="append-upload-btn" id="image-upload-label" style="display:none">تصاویر (مرورگر)</label>
+            <label for="folder-upload" class="append-upload-btn" id="folder-upload-label" style="display:none">پوشه (مرورگر)</label>
+            <label for="zip-upload" class="append-upload-btn" id="zip-upload-label" style="display:none">ZIP (مرورگر)</label>
+          </div>
+          <input type="file" id="image-upload" multiple accept="image/*" hidden>
+          <input type="file" id="folder-upload" webkitdirectory directory multiple hidden>
+          <input type="file" id="zip-upload" accept=".zip,application/zip" hidden>
+        </div>
+        <div class="icon-grid cols-3">
+          <button id="btn-delete-all-images" class="ibtn danger" data-tip="حذف تمام تصاویر">🗑️</button>
+        </div>
+        <div id="image-list-container">
+          <div class="side-label">تصاویر پروژه</div>
+          <div class="collapsible-content">
+            <div id="image-list" class="designed-image-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tool-section" data-section-id="ai">
+        <div class="side-label">زبان و جهت استخراج</div>
+        <div class="input-row"><span class="input-icon" data-tip="زبان متن">🈶</span>
+          <select id="ocr-language-select">
+            <option value="auto">تشخیص خودکار</option><option value="japanese">ژاپنی</option><option value="korean">کره‌ای</option><option value="chinese">چینی</option><option value="english">انگلیسی</option><option value="hindi">هندی</option><option value="spanish">اسپانیایی</option><option value="french">فرانسوی</option><option value="russian">روسی</option>
+          </select>
+        </div>
+        <div class="input-row"><span class="input-icon" data-tip="جهت متن">↕️</span>
+          <select id="ocr-direction-select">
+            <option value="auto">تشخیص خودکار</option><option value="horizontal-ltr">افقی چپ‌به‌راست</option><option value="horizontal-rtl">افقی راست‌به‌چپ</option><option value="vertical-ltr">عمودی (ستون از چپ)</option><option value="vertical-rtl">عمودی (ستون از راست)</option>
+          </select>
+        </div>
+        <div class="side-label">سبک ترجمه</div>
+        <div class="input-row"><span class="input-icon" data-tip="ژانر ترجمه">🎭</span>
+          <select id="genre-select">
+            <option value="general">عمومی / محاوره‌ای</option><option value="fantasy">فانتزی / حماسی</option><option value="martial">هنرهای رزمی</option><option value="ecchi">ایچی</option><option value="adult">بزرگسالانه</option><option value="hentai">هنتای</option>
+          </select>
+        </div>
+        <div class="side-label">پردازش دسته‌ای</div>
+        <div class="batch-status">
+          <span id="batch-info-text">هر بار ۱۰ علامت‌گذاری ارسال می‌شود.</span>
+          <span id="batch-range-display" class="range-chip"></span>
+        </div>
+        <div class="icon-grid cols-4">
+          <button id="send-batch-btn" class="ibtn primary" data-tip="ارسال دسته بعدی">📤<span class="badge" id="send-batch-badge"></span></button>
+          <button id="confirm-next-btn" class="ibtn primary" data-tip="تایید و ارسال بعدی">✅<span class="badge" id="confirm-badge"></span></button>
+          <button id="retry-empty-btn" class="ibtn" data-tip="ارسال مجدد خالی‌ها">🔄</button>
+          <button id="retry-deleted-btn" class="ibtn" data-tip="ارسال مجدد پاک‌شده‌ها">♻️</button>
+        </div>
+      </section>
+
+      <section class="tool-section" data-section-id="text">
+        <div class="icon-grid cols-3">
+          <button id="open-import-modal-btn" class="ibtn" data-tip="وارد کردن ترجمه">📥</button>
+          <button id="export-txt" class="ibtn" data-tip="خروجی TXT ترجمه">📄</button>
+          <button id="clear-all-text-btn" class="ibtn" data-tip="پاک کردن تمام متن‌ها">🧽</button>
+          <button id="clear-all-markings" class="ibtn danger" data-tip="حذف تمام علامت‌گذاری‌ها">⭕</button>
+          <button id="clear-all-outputs-btn" class="ibtn danger" data-tip="حذف تمام خروجی‌ها">🗑️</button>
+        </div>
+      </section>
+
+      <section class="tool-section" data-section-id="export">
+        <div class="icon-grid cols-3">
+          <button id="export-html" class="ibtn" data-tip="خروجی HTML تک‌فایل">🌐</button>
+          <button id="export-zip-btn" class="ibtn" data-tip="خروجی تصویری ZIP">🗜️</button>
+        </div>
+        <div class="side-label">تنظیمات خروجی</div>
+        <div class="input-row"><span class="input-icon" data-tip="عرض تصویر (پیکسل)">↔️</span><input type="number" id="export-width-input" placeholder="عرض (px)"></div>
+        <div class="input-row"><span class="input-icon" data-tip="کیفیت تصویر (%)">🎚️</span><input type="number" id="export-quality-input" placeholder="کیفیت (%)"></div>
+        <div class="input-row"><span class="input-icon" data-tip="درصد تغییر اندازه ZIP">📐</span><input type="number" id="export-resize-percent" min="1" max="200" value="100"></div>
+        <div class="input-row"><span class="input-icon" data-tip="فرمت ذخیره تصاویر">🖼️</span>
+          <select id="export-format-select"><option value="original">فرمت اصلی</option><option value="jpg">JPG</option><option value="webp">WebP</option><option value="png">PNG</option></select>
+        </div>
+        <div class="input-row"><span class="input-icon" data-tip="مسیر پوشه خروجی سرور">📁</span><input type="text" id="export-path-input" placeholder="مسیر خروجی (اختیاری)"></div>
+      </section>
+
+      <section class="tool-section" data-section-id="settings">
+        <div class="side-label">اتصال هوش مصنوعی</div>
+        <div class="input-row"><span class="input-icon" data-tip="آدرس LM Studio">🔗</span><input type="text" id="api-key-input" placeholder="http://localhost:1234/v1"></div>
+        <div class="icon-grid cols-3"><button id="save-api-key-btn" class="ibtn" data-tip="ذخیره آدرس سرور">💾</button></div>
+        <div class="side-label">پردازش</div>
+        <div class="input-row"><span class="input-icon" data-tip="دمای هوش مصنوعی (۰ تا ۰.۵)">🌡️</span><input type="number" id="temperature-input" min="0" max="0.5" step="0.05" value="0"><span class="value-chip" id="temperature-value">0.00</span></div>
+        <div class="input-row"><span class="input-icon" data-tip="اندازه دسته‌های ارسالی">📚</span><input type="number" id="batch-size-input" min="5" max="50" value="10"></div>
+        <div class="input-row"><span class="input-icon" data-tip="زمان ارسال خودکار (ثانیه)">⏱️</span><input type="number" id="auto-advance-time-input" min="1" value="10"></div>
+        <div class="side-label">استروک متن</div>
+        <div id="stroke-settings-section">
+          <div class="input-row"><span class="input-icon" data-tip="ضریب استروک پیش‌فرض (حداکثر ۱۶)">✒️</span><input type="number" id="default-stroke-scale" min="0.2" max="16" step="0.1"></div>
+          <div class="input-row"><span class="input-icon" data-tip="گام تغییر استروک">📏</span><input type="number" id="stroke-step" min="0.1" max="5" step="0.1"></div>
+        </div>
+        <div class="side-label">اندازه متن سراسری</div>
+        <div class="input-row"><span class="input-icon" data-tip="تنظیم کلی اندازه متن در همه بالون‌ها (−۴ تا ۴، پیش‌فرض ۰)">🔤</span>
+          <input type="range" id="global-text-size" min="-4" max="4" step="1" value="0" style="flex:1">
+          <span class="value-chip" id="global-text-size-value">0</span>
+        </div>
+        <div class="side-label">عصای جادویی</div>
+        <div class="input-row"><span class="input-icon" data-tip="تحمل رنگ">🪄</span><input type="number" id="magic-tolerance" value="30"><span class="value-chip" id="tolerance-value">30</span></div>
+        <div class="input-row"><span class="input-icon" data-tip="میزان Blur">💧</span><input type="number" id="magic-blur" step="0.1" value="0.7"><span class="value-chip" id="blur-value">0.7</span></div>
+        <div class="input-row"><span class="input-icon" data-tip="حساسیت لبه">📐</span><input type="number" id="magic-edge" value="20"><span class="value-chip" id="edge-value">20</span></div>
+        <div class="input-row"><span class="input-icon" data-tip="زمان نگه‌داشتن کلیک چپ (میلی‌ثانیه)">⏳</span>
+          <input type="range" id="magic-hold-ms" min="100" max="1000" step="50" value="500" style="flex:1">
+          <span class="value-chip" id="magic-hold-ms-value">500</span>
+        </div>
+        <div class="side-label">ظاهر</div>
+        <div class="input-row"><span class="input-icon" data-tip="تم نمایش">🎨</span>
+          <select id="theme-select"><option value="light">روشن</option><option value="dark">تاریک</option></select>
+        </div>
+        <div class="side-label">مدیریت فونت‌ها</div>
+        <div id="font-manager-container">
+          <div class="font-slot"><label class="font-pick" data-tip="فونت پیش‌فرض — کلیک برای بارگذاری"><span class="font-key">T</span><span class="font-label" id="font-name-0">Tahoma</span><input type="file" class="font-input" data-index="0" accept=".ttf,.otf,.woff,.woff2"></label><button class="clear-font-btn" data-index="0" data-tip="حذف">✕</button></div>
+          <div class="font-slot"><label class="font-pick" data-tip="بارگذاری فونت ۱"><span class="font-key">T1</span><span class="font-label" id="font-name-1">خالی</span><input type="file" class="font-input" data-index="1" accept=".ttf,.otf,.woff,.woff2"></label><input type="text" class="font-custom-name-input" data-index="1" placeholder="نام"><button class="clear-font-btn" data-index="1" data-tip="حذف">✕</button></div>
+          <div class="font-slot"><label class="font-pick" data-tip="بارگذاری فونت ۲"><span class="font-key">T2</span><span class="font-label" id="font-name-2">خالی</span><input type="file" class="font-input" data-index="2" accept=".ttf,.otf,.woff,.woff2"></label><input type="text" class="font-custom-name-input" data-index="2" placeholder="نام"><button class="clear-font-btn" data-index="2" data-tip="حذف">✕</button></div>
+          <div class="font-slot"><label class="font-pick" data-tip="بارگذاری فونت ۳"><span class="font-key">T3</span><span class="font-label" id="font-name-3">خالی</span><input type="file" class="font-input" data-index="3" accept=".ttf,.otf,.woff,.woff2"></label><input type="text" class="font-custom-name-input" data-index="3" placeholder="نام"><button class="clear-font-btn" data-index="3" data-tip="حذف">✕</button></div>
+          <div class="font-slot"><label class="font-pick" data-tip="بارگذاری فونت ۴"><span class="font-key">T4</span><span class="font-label" id="font-name-4">خالی</span><input type="file" class="font-input" data-index="4" accept=".ttf,.otf,.woff,.woff2"></label><input type="text" class="font-custom-name-input" data-index="4" placeholder="نام"><button class="clear-font-btn" data-index="4" data-tip="حذف">✕</button></div>
+          <div class="font-slot"><label class="font-pick" data-tip="بارگذاری فونت ۵"><span class="font-key">T5</span><span class="font-label" id="font-name-5">خالی</span><input type="file" class="font-input" data-index="5" accept=".ttf,.otf,.woff,.woff2"></label><input type="text" class="font-custom-name-input" data-index="5" placeholder="نام"><button class="clear-font-btn" data-index="5" data-tip="حذف">✕</button></div>
+        </div>
+      </section>
+
+    </div>
+  </aside>
+
+  <div id="image-container-wrapper">
+    <div id="image-container">
+      <div class="placeholder-text">یک پروژه را لود کنید یا با کشیدن تصاویر به بخش «تصاویر»، کار جدیدی را آغاز نمایید.</div>
+    </div>
+    <div id="right-tools-panel">
+      <div class="drawing-tools-vertical">
+        <button class="tool-btn active" data-tool="rect" title="مستطیل">⬜</button>
+        <button class="tool-btn" data-tool="ellipse" title="بیضی">⭕</button>
+        <button class="tool-btn" data-tool="polygon" title="چندضلعی">🔷</button>
+        <button class="tool-btn" data-tool="freehand" title="خط آزاد">〰️</button>
+        <button class="tool-btn" data-tool="magic-wand" title="عصای جادویی (نگه‌داشتن)">🪄</button>
+        <button class="tool-btn" data-tool="edit" title="ویرایش">✏️</button>
+      </div>
+    </div>
+    <div id="left-tools-panel">
+      <button id="toggle-original-btn" class="toggle-text-btn" title="نمایش متن اصلی/ترجمه (Tab)">↔</button>
+      <button id="zoom-in" title="بزرگنمایی">+</button>
+      <button id="zoom-out" title="کوچک‌نمایی">−</button>
+      <button id="settings-toggle-btn" title="تنظیمات">⚙️</button>
+    </div>
+    <div id="rotation-hint" class="hidden">🔄 چرخش فعال: ⬅️ ➡️<div class="timer-bar"><div class="timer-progress"></div></div></div>
+    <div id="magic-wand-loading" class="hidden"><div class="spinner"></div>در حال تحلیل لایه‌ها...</div>
+  </div>
+
+  <aside id="right-sidebar">
+    <h2>متن‌های استخراج شده</h2>
+    <div id="output-list"></div>
+  </aside>
+
+</div>
+
+<div id="settings-floating-panel" class="floating-panel hidden">
+  <div class="floating-panel-header">پیکربندی <span id="close-settings-btn" style="float:left;cursor:pointer;">✖</span></div>
+  <div class="floating-panel-content"></div>
+</div>
+
+<div id="error-container" class="hidden">
+  <button id="close-error-btn">بستن</button>
+  <span id="error-message"></span>
+</div>
+
+<div id="import-modal" class="hidden">
+  <div class="modal-content">
+    <h3>وارد کردن متن ترجمه شده</h3>
+    <p>متن ترجمه شده را به همراه تگ شماره‌ها (مانند [001]) در کادر زیر وارد کنید:</p>
+    <textarea id="import-textarea"></textarea>
+    <div class="modal-actions">
+      <button id="process-import-btn">اعمال ترجمه</button>
+      <button id="close-import-btn">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<script src="constants.js"></script>
+<script src="utils.js"></script>
+<script src="project_io.js"></script>
+<script src="project_images_engine.js"></script>
+<script src="project_sidebar_ui.js"></script>
+<script src="font_manager.js"></script>
+<script src="drawing_canvas.js"></script>
+<script src="tools_magic_wand.js"></script>
+<script src="text_overlay.js"></script>
+<script src="ui_controls.js"></script>
+<script src="ui_sidebar.js"></script>
+<script src="api.js"></script>
+<script src="export_manager.js"></script>
+<script src="export_zip.js"></script>
+<script src="interaction_manager.js"></script>
+<script src="desktop_bridge.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

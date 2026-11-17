@@ -1,0 +1,4 @@
+{
+    "batchSize": 10,
+    "lmStudioUrl": "http://localhost:1234/v1"
+}
